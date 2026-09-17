@@ -1,6 +1,6 @@
 {
   "name": "@agentuity/browzer",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": false,
   "description": "agent-browser wrapper that records a replayable debug trace",
   "license": "MIT",
@@ -8,9 +8,10 @@
     "access": "public"
   },
   "bin": {
-    "browzer": "./dist/cli/browzer.js"
+    "browzer": "./bin/browzer"
   },
   "files": [
+    "bin",
     "dist",
     "skills",
     "docs",
