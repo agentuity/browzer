@@ -1,26 +1,41 @@
 {
-  "name": "browzer",
+  "name": "@agentuity/browzer",
   "version": "0.1.0",
-  "private": true,
+  "private": false,
+  "description": "agent-browser wrapper that records a replayable debug trace",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "bin": {
+    "browzer": "./dist/cli/browzer.js"
+  },
+  "files": [
+    "dist",
+    "skills",
+    "docs",
+    "README.md",
+    "LICENSE.md"
+  ],
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
+    "build": "tsc",
+    "prepublishOnly": "tsc",
+    "browzer": "node dist/cli/browzer.js"
   },
-  "dependencies": {
-    "next": "16.3.5",
-    "react": "19.2.8",
-    "react-dom": "19.2.8"
+  "engines": {
+    "node": ">=18"
   },
+  "keywords": [
+    "agent-browser",
+    "browser",
+    "trace",
+    "replay",
+    "har",
+    "agent",
+    "cli"
+  ],
   "devDependencies": {
-    "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "16.3.5",
-    "tailwindcss": "^4",
     "typescript": "^5"
   }
 }

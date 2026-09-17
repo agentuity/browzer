@@ -1,34 +1,103 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Browzer
 
-## Getting Started
+`browzer` is [agent-browser](https://agent-browser.dev) with a trace. Same commands, same snapshot-and-click loop. Each session is saved so you can inspect it later or open a local HTML replay.
 
-First, run the development server:
+Live watching stays with `agent-browser dashboard`. Browzer is the bundle you keep after `close`.
+
+![Replay of a 31-step session](docs/replay.png)
+
+## Install
+
+Needs Node 18+, [agent-browser](https://agent-browser.dev) on `PATH`, and [ffmpeg](https://ffmpeg.org/) on `PATH` (for video).
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm i -g @agentuity/browzer
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Confirm:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+browzer help
+agent-browser --version
+ffmpeg -version
+```
 
-## Learn More
+Install the Agent Skill so Claude Code, Cursor, Codex, Grok, and others treat `browzer` as the browser CLI when a recording is wanted:
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+browzer skills install
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Quick start
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+export AGENT_BROWSER_SESSION=demo
+export AGENT_BROWSER_IDLE_TIMEOUT_MS=0
 
-## Deploy on Vercel
+browzer --session demo open https://example.com
+browzer --session demo snapshot -i
+browzer --session demo find text "Learn more" click
+browzer --session demo close
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+browzer traces
+browzer inspect demo
+browzer replay demo
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Every `browzer` invocation except `dashboard`, `mcp`, `doctor`, `install`, `upgrade`, and `session` metadata is the same argv you would have passed to `agent-browser`. Do not also run `agent-browser` on that `--session`.
+
+## How a trace is captured
+
+On the first successful command for a session, Browzer starts:
+
+- `record start` → `session.mp4`
+- `network har start --content text` → `network.har`
+
+While commands run, it appends:
+
+- `commands.jsonl` — argv, duration, exit, stdout/stderr
+- `events.jsonl` — stream `command` / `result` / `url` / `tabs`
+- `console.jsonl` — console and page errors from the stream
+
+On `close` it dumps `console.json`, `errors.json`, `snapshot.txt`, `poster.jpg`, stops recording and HAR, and writes `summary.md`.
+
+Traces are written under the current directory as `<id>/` unless you pass `--output` / `-o` or set `BROWZER_OUTPUT`. Session bookkeeping still uses `~/.browzer/active` (override the home with `BROWZER_HOME`). Override the wrapped binary with `AGENT_BROWSER_BIN`.
+
+```bash
+browzer --output ./artifacts --session demo open https://example.com
+browzer --output ./artifacts traces
+browzer --output ./artifacts replay demo
+```
+
+## Commands Browzer adds
+
+| Command | What it does |
+|---|---|
+| `browzer traces` | List traces |
+| `browzer traces --json` | Same, JSON |
+| `browzer inspect [id]` | Print `summary.md` (latest if omitted) |
+| `browzer replay [id\|path]` | Write `replay.html` next to the video and open it |
+| `browzer skills` | List the bundled skill |
+| `browzer skills get` | Print `SKILL.md` matching this CLI |
+| `browzer skills install` | Copy the skill into `~/.agents`, plus Claude / Cursor / Codex / Grok if those dirs exist |
+| `browzer skills install --project` | Copy into this repo’s agent skill folders |
+
+Everything else is forwarded to `agent-browser`.
+
+## Replay
+
+```bash
+browzer replay                 # latest
+browzer replay demo            # id, prefix, or session suffix
+browzer replay ./20260917-185027-long-demo
+```
+
+The page is a static HTML file beside `session.mp4`. No app server. The URL bar follows the playhead. Steps seek the video. Console, network, errors, and snapshot sit behind **Show details**.
+
+## After a failure
+
+Agents should read `browzer inspect` first (failed commands, HAR 4xx/5xx, console errors). Humans open `browzer replay`. Live CDP-style inspection during a run is `agent-browser dashboard start` at http://localhost:4848.
+
+## Skill
+
+Canonical file: [`skills/browzer/SKILL.md`](skills/browzer/SKILL.md). Same Agent Skills format used by Claude Code, Cursor, Codex, and Grok. It is a prefix swap: same commands as agent-browser, invoke `browzer`. Snapshot/click/fill details stay in the agent-browser core skill.
