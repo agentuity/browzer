@@ -61,7 +61,7 @@ While commands run, it appends:
 
 On `close` it dumps `console.json`, `errors.json`, `snapshot.txt`, `poster.jpg`, stops recording and HAR, and writes `summary.md`.
 
-Traces are written under the current directory as `<id>/` unless you pass `--output` / `-o` or set `BROWZER_OUTPUT`. Session bookkeeping still uses `~/.browzer/active` (override the home with `BROWZER_HOME`). Override the wrapped binary with `AGENT_BROWSER_BIN`.
+Traces are written under `~/.browzer/traces/<id>/` unless you pass `--output` / `-o` or set `BROWZER_OUTPUT`. Session bookkeeping still uses `~/.browzer/active` (override the home with `BROWZER_HOME`). Override the wrapped binary with `AGENT_BROWSER_BIN`.
 
 ```bash
 browzer --output ./artifacts --session demo open https://example.com

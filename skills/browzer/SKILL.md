@@ -27,7 +27,7 @@ export AGENT_BROWSER_SESSION="$(browzer session id --scope worktree --prefix tas
 export AGENT_BROWSER_IDLE_TIMEOUT_MS=0
 ```
 
-Then pass `--session "$AGENT_BROWSER_SESSION"` on every `browzer` command, or rely on the env var. Pass `--output <dir>` (or `BROWZER_OUTPUT`) to choose where the trace folder is written; default is the current working directory.
+Then pass `--session "$AGENT_BROWSER_SESSION"` on every `browzer` command, or rely on the env var. Traces land in `~/.browzer/traces` unless you pass `--output <dir>` or set `BROWZER_OUTPUT`.
 
 ## Drive the browser
 
@@ -44,6 +44,6 @@ browzer --session "$AGENT_BROWSER_SESSION" close
 
 ## After the run
 
-- Agent: `browzer inspect [id]` (latest if omitted). Read `summary.md` first, then HAR/console/errors in the trace directory (`./<id>/` or `--output`).
+- Agent: `browzer inspect [id]` (latest if omitted). Read `summary.md` first, then HAR/console/errors in the trace directory (`~/.browzer/traces/<id>/` or `--output`).
 - Human: `browzer replay [id|path]`.
 - List: `browzer traces`.

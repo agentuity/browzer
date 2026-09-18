@@ -1,8 +1,8 @@
 import { existsSync, statSync } from "node:fs";
-import { readdir, stat, writeFile } from "node:fs/promises";
+import { stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { spawn } from "node:child_process";
-import { tracesDir } from "./paths";
+import { latestTraceId, listTraceIds, tracesDir } from "./paths";
 import { getTraceFromDir } from "../lib/trace-store";
 import { renderReplayHtml } from "./replay-html";
 
@@ -25,35 +25,20 @@ async function resolveTraceDir(arg?: string, output?: string): Promise<string> {
   if (arg) {
     const resolved = path.resolve(arg);
     if (existsSync(resolved)) {
-      if (statSync(resolved).isDirectory()) return resolved;
-      return path.dirname(resolved);
+      const dir = statSync(resolved).isDirectory() ? resolved : path.dirname(resolved);
+      if (existsSync(path.join(dir, "meta.json"))) return dir;
     }
     const id = await matchId(arg, root);
     if (id) return path.join(root, id);
     throw new Error(`Trace not found: ${arg}`);
   }
-  const latest = await latestId(root);
+  const latest = await latestTraceId(root);
   if (!latest) throw new Error("No traces yet. Record one with browzer <agent-browser command>.");
   return path.join(root, latest);
 }
 
-async function latestId(dir: string): Promise<string | null> {
-  if (!existsSync(dir)) return null;
-  let best: { id: string; mtime: number } | null = null;
-  for (const id of await readdir(dir)) {
-    try {
-      const info = await stat(path.join(dir, id));
-      if (!best || info.mtimeMs > best.mtime) best = { id, mtime: info.mtimeMs };
-    } catch {
-      /* skip */
-    }
-  }
-  return best?.id ?? null;
-}
-
 async function matchId(prefix: string, dir: string): Promise<string | null> {
-  if (!existsSync(dir)) return null;
-  const ids = (await readdir(dir)).filter(
+  const ids = (await listTraceIds(dir)).filter(
     (id) => id === prefix || id.startsWith(prefix) || id.endsWith(`-${prefix}`),
   );
   if (ids.length === 0) return null;
