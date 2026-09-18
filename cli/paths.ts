@@ -1,3 +1,5 @@
+import { existsSync } from "node:fs";
+import { readdir, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
 
@@ -13,8 +15,9 @@ export function browzerHome() {
 }
 
 export function tracesDir(output?: string | null) {
-  const raw = output?.trim() || process.env.BROWZER_OUTPUT?.trim() || process.cwd();
-  return path.resolve(raw);
+  const raw = output?.trim() || process.env.BROWZER_OUTPUT?.trim();
+  if (raw) return path.resolve(raw);
+  return path.join(browzerHome(), "traces");
 }
 
 export function activeDir() {
@@ -36,4 +39,28 @@ export function sanitize(value: string) {
 export function newTraceId(session: string) {
   const stamp = new Date().toISOString().replace(/[-:]/g, "").replace("T", "-").slice(0, 15);
   return `${stamp}-${sanitize(session)}`;
+}
+
+export function isTraceDir(root: string, id: string) {
+  if (!id || id.startsWith(".")) return false;
+  return existsSync(path.join(root, id, "meta.json"));
+}
+
+export async function listTraceIds(root: string): Promise<string[]> {
+  if (!existsSync(root)) return [];
+  return (await readdir(root)).filter((id) => isTraceDir(root, id));
+}
+
+export async function latestTraceId(root: string): Promise<string | null> {
+  const ids = await listTraceIds(root);
+  let best: { id: string; mtime: number } | null = null;
+  for (const id of ids) {
+    try {
+      const info = await stat(path.join(root, id));
+      if (!best || info.mtimeMs > best.mtime) best = { id, mtime: info.mtimeMs };
+    } catch {
+      /* skip */
+    }
+  }
+  return best?.id ?? null;
 }

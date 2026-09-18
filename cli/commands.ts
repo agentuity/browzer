@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
-import { readdir, readFile, stat } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
-import { tracesDir } from "./paths";
+import { isTraceDir, latestTraceId, listTraceIds, tracesDir } from "./paths";
 
 export async function tracesCommand(json: boolean, output?: string) {
   const dir = tracesDir(output);
@@ -13,7 +13,7 @@ export async function tracesCommand(json: boolean, output?: string) {
     process.stdout.write("No traces yet. Run a session with browzer <agent-browser command>.\n");
     return;
   }
-  const ids = (await readdir(dir)).filter((name) => existsSync(path.join(dir, name, "meta.json")));
+  const ids = await listTraceIds(dir);
   const traces = await Promise.all(
     ids.map(async (id) => {
       const meta = JSON.parse(await readFile(path.join(dir, id, "meta.json"), "utf8")) as {
@@ -48,14 +48,13 @@ export async function tracesCommand(json: boolean, output?: string) {
 
 export async function inspectCommand(idArg: string | undefined, output?: string) {
   const root = tracesDir(output);
-  const id = idArg || (await latestId(root));
+  const id = idArg || (await latestTraceId(root));
   if (!id) {
     process.stderr.write("No traces found.\n");
     process.exitCode = 1;
     return;
   }
-  const dir = path.join(root, id);
-  const matches = existsSync(dir) ? [id] : await matchPrefix(id, root);
+  const matches = isTraceDir(root, id) ? [id] : await matchPrefix(id, root);
   const resolved = matches.length <= 1 ? matches[0] : await newest(matches, root);
   if (!resolved) {
     process.stderr.write(`Trace not found: ${id}\n`);
@@ -76,24 +75,8 @@ export async function inspectCommand(idArg: string | undefined, output?: string)
   }
 }
 
-async function latestId(dir: string): Promise<string | null> {
-  if (!existsSync(dir)) return null;
-  const ids = await readdir(dir);
-  let best: { id: string; mtime: number } | null = null;
-  for (const id of ids) {
-    try {
-      const info = await stat(path.join(dir, id));
-      if (!best || info.mtimeMs > best.mtime) best = { id, mtime: info.mtimeMs };
-    } catch {
-      /* skip */
-    }
-  }
-  return best?.id ?? null;
-}
-
 async function matchPrefix(prefix: string, dir: string): Promise<string[]> {
-  if (!existsSync(dir)) return [];
-  const ids = await readdir(dir);
+  const ids = await listTraceIds(dir);
   return ids.filter((id) => id === prefix || id.startsWith(prefix) || id.endsWith(`-${prefix}`));
 }
 
@@ -121,7 +104,7 @@ Usage:
   browzer skills [list|get|path|install] [--project]
   browzer help
 
---output / -o   Directory for traces. Default: current working directory.
+--output / -o   Directory for traces. Default: ~/.browzer/traces.
                 Also BROWZER_OUTPUT.
 
 On first successful command, browzer starts video recording and HAR capture.
